@@ -6,9 +6,10 @@ import numpy as np
 import json
 from pathlib import Path
 
+# Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS for POST requests
+# Enable CORS for POST requests from any origin
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,6 +24,7 @@ with open(data_file) as f:
 
 df = pd.DataFrame(records)
 
+# POST endpoint: check latency metrics per region
 @app.post("/")
 async def latency_check(request: Request):
     body = await request.json()
@@ -47,3 +49,8 @@ async def latency_check(request: Request):
         }
 
     return results
+
+# GET endpoint: health check for browser testing
+@app.get("/health")
+def health():
+    return {"status": "ok"}
