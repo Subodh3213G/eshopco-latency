@@ -9,12 +9,12 @@ from pathlib import Path
 # Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS for POST requests from any origin
+# Enable CORS for all origins, all methods, all headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["POST"],
-    allow_headers=["*"],
+    allow_origins=["*"],    # Allow any origin
+    allow_methods=["*"],    # Allow GET, POST, OPTIONS, etc.
+    allow_headers=["*"],    # Allow any headers
 )
 
 # Load telemetry data (packaged with deployment)
@@ -50,7 +50,7 @@ async def latency_check(request: Request):
 
     return results
 
-# GET endpoint: health check for browser testing
+# GET endpoint: health check for browser
 @app.get("/health")
 def health():
     return {"status": "ok"}
