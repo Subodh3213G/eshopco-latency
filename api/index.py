@@ -1,56 +1,61 @@
-# api/index.py
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import pandas as pd
-import numpy as np
+from fastapi.responses import JSONResponse
 import json
+import numpy as np
 from pathlib import Path
+import time
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Enable CORS for all origins, all methods, all headers
+# Allow POST requests from any origin (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],    # Allow any origin
-    allow_methods=["*"],    # Allow GET, POST, OPTIONS, etc.
-    allow_headers=["*"],    # Allow any headers
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["POST", "OPTIONS", "GET"],
+    allow_headers=["*"],
 )
 
-# Load telemetry data (packaged with deployment)
-data_file = Path(__file__).resolve().parent / "q-vercel-latency.json"
-with open(data_file) as f:
-    records = json.load(f)
+# Load the telemetry data that was deployed with the function
+DATA_FILE = Path("q-vercel-latency.json")
+if DATA_FILE.exists():
+    telemetry = json.loads(DATA_FILE.read_text())
+else:
+    telemetry = []
 
-df = pd.DataFrame(records)
+def stats_for_region(region: str, threshold: float):
+    items = [r for r in telemetry if r.get("region") == region]
+    if not items:
+        return None
+    latencies = [float(r["latency_ms"]) for r in items]
+    uptimes = [float(r["uptime_pct"]) for r in items]
 
-# POST endpoint: check latency metrics per region
+    avg_latency = float(np.mean(latencies))
+    p95_latency = float(np.percentile(latencies, 95))
+    avg_uptime = float(np.mean(uptimes))
+    breaches = sum(1 for l in latencies if l > threshold)
+
+    # rounding for nicer JSON
+    return {
+        "avg_latency": round(avg_latency, 2),
+        "p95_latency": round(p95_latency, 2),
+        "avg_uptime": round(avg_uptime, 3),
+        "breaches": int(breaches),
+    }
+
 @app.post("/")
-async def latency_check(request: Request):
+async def analyze(request: Request):
     body = await request.json()
     regions = body.get("regions", [])
-    threshold = body.get("threshold_ms", 180)
+    return {"received_regions": regions}
 
-    results = {}
-    for region in regions:
-        subset = df[df["region"] == region]
-        if subset.empty:
-            continue
-        avg_latency = subset["latency_ms"].mean()
-        p95_latency = np.percentile(subset["latency_ms"], 95)
-        avg_uptime = subset["uptime_pct"].mean()
-        breaches = (subset["latency_ms"] > threshold).sum()
+# ✅ New GET endpoint for /api/latency
+@app.get("/api/latency")
+async def latency():
+    return JSONResponse({
+        "message": "Latency API is working",
+        "timestamp": time.time(),
+        "total_records": len(telemetry)
+    })
 
-        results[region] = {
-            "avg_latency": round(avg_latency, 2),
-            "p95_latency": round(p95_latency, 2),
-            "avg_uptime": round(avg_uptime, 3),
-            "breaches": int(breaches),
-        }
-
-    return results
-
-# GET endpoint: health check for browser
-@app.get("/health")
-def health():
-    return {"status": "ok"}
