@@ -1,23 +1,21 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-import json
+import json, time
 import numpy as np
 from pathlib import Path
-import time
 
 app = FastAPI()
 
-# Allow POST requests from any origin (CORS)
+# Allow CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["POST", "OPTIONS", "GET"],
+    allow_methods=["POST","OPTIONS","GET"],
     allow_headers=["*"],
 )
 
-# Load the telemetry data that was deployed with the function
+# Load telemetry data
 DATA_FILE = Path("q-vercel-latency.json")
 if DATA_FILE.exists():
     telemetry = json.loads(DATA_FILE.read_text())
@@ -36,26 +34,33 @@ def stats_for_region(region: str, threshold: float):
     avg_uptime = float(np.mean(uptimes))
     breaches = sum(1 for l in latencies if l > threshold)
 
-    # rounding for nicer JSON
     return {
         "avg_latency": round(avg_latency, 2),
         "p95_latency": round(p95_latency, 2),
         "avg_uptime": round(avg_uptime, 3),
-        "breaches": int(breaches),
+        "breaches": int(breaches)
     }
 
-@app.post("/")
-async def analyze(request: Request):
-    body = await request.json()
-    regions = body.get("regions", [])
-    return {"received_regions": regions}
-
-# ✅ New GET endpoint for /api/latency
+# ✅ Health check route
 @app.get("/api/latency")
-async def latency():
-    return JSONResponse({
+async def status():
+    return {
         "message": "Latency API is working",
         "timestamp": time.time(),
         "total_records": len(telemetry)
-    })
+    }
 
+# ✅ Analysis route
+@app.post("/api/latency")
+async def analyze(request: Request):
+    body = await request.json()
+    regions = body.get("regions", [])
+    threshold = float(body.get("threshold", 500))
+
+    results = {}
+    for region in regions:
+        stats = stats_for_region(region, threshold)
+        if stats:
+            results[region] = stats
+
+    return results
