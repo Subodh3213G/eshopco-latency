@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Response
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -11,12 +11,12 @@ import os
 app = FastAPI()
 
 # --- CORS Configuration ---
-# Enables POST requests from any origin as required.
+# Enables GET and POST requests from any origin as required.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"], # Allow GET requests
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -47,23 +47,13 @@ async def handle_get_request():
             <title>eShopCo Latency API</title>
             <style>
                 body { font-family: sans-serif; padding: 2em; line-height: 1.6; }
-                h1, h2 { color: #333; }
                 code { background-color: #eee; padding: 3px 6px; border-radius: 4px; }
-                pre { background-color: #f4f4f4; padding: 1em; border-radius: 5px; white-space: pre-wrap; word-wrap: break-word; }
+                pre { background-color: #f4f4f4; padding: 1em; border-radius: 5px; }
             </style>
         </head>
         <body>
             <h1>eShopCo Latency API is Running</h1>
-            <p>This endpoint is designed to accept <strong>POST</strong> requests with a JSON body.</p>
-            <p>Accessing this URL in a browser sends a GET request, which is why you are seeing this page instead of an error.</p>
-            <h2>How to Use This API</h2>
-            <p>To fetch latency metrics, send a POST request to this URL with the following structure:</p>
-            <pre><code>
-{
-  "regions": ["amer", "apac"],
-  "threshold_ms": 152
-}
-            </code></pre>
+            <p>To use this API, please send a <strong>POST</strong> request to this URL.</p>
             <h3>Example using cURL:</h3>
             <pre><code>curl -X POST "https://eshopco-latency-mocha.vercel.app/" \\
 -H "Content-Type: application/json" \\
